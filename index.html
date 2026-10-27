@@ -1,0 +1,1130 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>WTS Rescue · Simulador MR de Búsqueda y Rescate</title>
+<style>
+  :root{
+    --bg:#0b0f14; --panel:#121a23; --panel2:#0e151d; --line:#22303e;
+    --txt:#dce7f0; --dim:#7d93a8; --amber:#ff9d2e; --amber2:#ffb95c;
+    --teal:#2fd6c3; --red:#ff4d5a; --green:#4ade80; --blue:#57a6ff;
+    --mono:'Courier New',ui-monospace,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{background:radial-gradient(1200px 700px at 70% -10%,#16222f 0%,var(--bg) 60%);
+       color:var(--txt);font-family:'Segoe UI',system-ui,-apple-system,sans-serif;overflow:hidden}
+  /* ---------- Header ---------- */
+  header{display:flex;align-items:center;gap:14px;padding:8px 16px;
+    background:linear-gradient(180deg,#141f2b,#0f1720);border-bottom:1px solid var(--line);height:54px}
+  header .logo{width:30px;height:30px;border-radius:7px;background:linear-gradient(135deg,var(--amber),#ff6a00);
+    display:grid;place-items:center;font-weight:900;color:#1a1206;font-size:15px;box-shadow:0 0 14px #ff9d2e55}
+  header h1{font-size:15px;letter-spacing:.5px;text-transform:uppercase}
+  header h1 small{display:block;font-size:10.5px;color:var(--dim);font-weight:400;letter-spacing:1.2px}
+  header .spacer{flex:1}
+  .hbtn{background:#1b2836;border:1px solid var(--line);color:var(--txt);border-radius:8px;
+    padding:7px 12px;font-size:12.5px;cursor:pointer;transition:.15s}
+  .hbtn:hover{border-color:var(--amber);color:var(--amber2)}
+  .timer{font-family:var(--mono);font-size:15px;color:var(--teal);min-width:74px;text-align:center;
+    background:#0a1118;border:1px solid var(--line);padding:6px 10px;border-radius:8px}
+  /* ---------- Split screen ---------- */
+  main{display:flex;height:calc(100% - 54px);width:100%}
+  .pane{width:50%;display:flex;flex-direction:column;min-width:0}
+  .pane.left{border-right:2px solid var(--line);background:var(--panel2)}
+  .pane.right{background:var(--bg)}
+  .pane-title{font-size:11px;letter-spacing:1.6px;text-transform:uppercase;padding:7px 14px;
+    display:flex;align-items:center;gap:8px;color:var(--dim);border-bottom:1px solid var(--line);background:#0d151e}
+  .dot{width:9px;height:9px;border-radius:50%}
+  .dot.v{background:var(--red);box-shadow:0 0 8px var(--red)}
+  .dot.r{background:var(--amber);box-shadow:0 0 8px var(--amber)}
+  .pane-body{flex:1;overflow-y:auto;padding:10px 12px;display:flex;flex-direction:column;gap:10px}
+  .pane-body::-webkit-scrollbar{width:8px}
+  .pane-body::-webkit-scrollbar-thumb{background:#243546;border-radius:4px}
+  canvas{display:block;width:100%;border-radius:10px;background:#0a0f15;border:1px solid var(--line)}
+  /* ---------- Cards / vitals ---------- */
+  .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+  .vcard{background:linear-gradient(180deg,#13202c,#0f1923);border:1px solid var(--line);
+    border-radius:10px;padding:8px 6px;text-align:center}
+  .vcard .lab{font-size:9.5px;letter-spacing:1px;color:var(--dim);text-transform:uppercase}
+  .vcard .val{font-family:var(--mono);font-size:19px;font-weight:700;margin-top:2px}
+  .vcard .unit{font-size:10px;color:var(--dim)}
+  .vcard .sub{font-size:9.5px;margin-top:1px;min-height:12px;font-weight:700;letter-spacing:.5px}
+  .ok{color:var(--green)} .warn{color:var(--amber)} .bad{color:var(--red)} .info{color:var(--blue)} .mut{color:var(--dim)}
+  .section{background:#0f1923;border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+  .section h3{font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:var(--dim);margin-bottom:8px;
+    display:flex;align-items:center;gap:7px}
+  .section h3 .chip{background:#1d2c3b;border:1px solid var(--line);border-radius:20px;padding:1px 8px;
+    font-size:9.5px;color:var(--teal);letter-spacing:.8px}
+  /* slider */
+  .slider-row{display:flex;align-items:center;gap:10px}
+  .slider-row input[type=range]{flex:1;accent-color:var(--amber)}
+  .temp-big{font-family:var(--mono);font-size:22px;font-weight:700;min-width:86px;text-align:right}
+  .btnrow{display:flex;gap:8px;flex-wrap:wrap}
+  .btn{flex:1;min-width:120px;border:1px solid var(--line);background:#182635;color:var(--txt);
+    border-radius:9px;padding:9px 8px;font-size:12px;cursor:pointer;transition:.15s;text-align:center}
+  .btn b{display:block;font-size:13px;margin-bottom:1px}
+  .btn span{font-size:10px;color:var(--dim)}
+  .btn:hover{border-color:var(--amber)}
+  .btn.active{background:linear-gradient(180deg,#7a3c00,#5a2b00);border-color:var(--amber);color:#ffd9b0}
+  /* tap pattern */
+  .morse{display:flex;gap:6px;align-items:center;min-height:30px;font-family:var(--mono);font-size:22px;
+    letter-spacing:4px;color:var(--teal);padding:4px 2px}
+  .log{font-family:var(--mono);font-size:10.5px;line-height:1.65;color:var(--dim);max-height:86px;overflow-y:auto}
+  .log b{color:var(--amber2);font-weight:400}
+  .log .r{color:var(--red)} .log .g{color:var(--green)} .log .t{color:var(--teal)}
+  /* ---------- Tracker ---------- */
+  .tracker{background:linear-gradient(180deg,#1a2530,#121c26);border:1px solid #2c3e50;border-radius:12px;
+    padding:10px;box-shadow:inset 0 0 25px #0008}
+  .tr-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+  .tr-head .t{font-size:10.5px;letter-spacing:1.5px;color:var(--amber2);text-transform:uppercase}
+  .tr-head .link{font-family:var(--mono);font-size:10px;padding:2px 8px;border-radius:20px;border:1px solid var(--line)}
+  .tr-main{display:flex;gap:10px}
+  #radar{width:132px;height:132px;flex:0 0 132px;border-radius:50%;background:#071016;
+    border:2px solid #27414f;box-shadow:inset 0 0 18px #000}
+  .tr-data{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:6px;min-width:0}
+  .metric{background:#0c161e;border:1px solid var(--line);border-radius:8px;padding:5px 8px}
+  .metric .k{font-size:9px;color:var(--dim);letter-spacing:1px;text-transform:uppercase}
+  .metric .v{font-family:var(--mono);font-size:16px;font-weight:700}
+  .metric .v small{font-size:9px;color:var(--dim)}
+  .sig-wrap{grid-column:1/3;display:flex;align-items:center;gap:8px}
+  .bars{display:flex;gap:3px;align-items:flex-end;height:22px}
+  .bars i{width:9px;background:#263644;border-radius:2px;transition:.2s}
+  .bars i:nth-child(1){height:7px}.bars i:nth-child(2){height:11px}.bars i:nth-child(3){height:15px}
+  .bars i:nth-child(4){height:19px}.bars i:nth-child(5){height:23px}
+  .bars i.on{background:linear-gradient(180deg,var(--amber2),var(--amber));box-shadow:0 0 8px #ff9d2e88}
+  .arrow-box{display:flex;align-items:center;gap:7px;font-family:var(--mono);font-size:11px;color:var(--dim)}
+  #dirArrow{font-size:22px;color:var(--teal);transition:transform .25s;display:inline-block}
+  .sos-banner{grid-column:1/3;background:#3a0d12;border:1px solid var(--red);color:#ffb3b8;
+    text-align:center;font-weight:800;letter-spacing:2px;font-size:12px;padding:7px;border-radius:8px;
+    display:none;animation:flash .6s infinite}
+  @keyframes flash{50%{background:#7a1620;color:#fff}}
+  /* joystick */
+  #joy{position:absolute;right:22px;bottom:26px;width:110px;height:110px;border-radius:50%;
+    background:#ffffff10;border:2px solid #ffffff22;touch-action:none;display:none}
+  #joy .knob{position:absolute;left:50%;top:50%;width:46px;height:46px;margin:-23px 0 0 -23px;
+    border-radius:50%;background:#ff9d2ecc;box-shadow:0 0 16px #ff9d2e66}
+  .pane.right{position:relative}
+  .hint{font-size:10.5px;color:var(--dim);text-align:center;padding:2px 0 0}
+  .hint kbd{background:#1b2836;border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;
+    padding:1px 6px;font-family:var(--mono);font-size:10px;color:var(--txt)}
+  /* ---------- Overlays ---------- */
+  .overlay{position:fixed;inset:0;background:#05080ce8;backdrop-filter:blur(6px);z-index:50;
+    display:grid;place-items:center;padding:20px}
+  .modal{max-width:640px;width:100%;background:linear-gradient(180deg,#15212e,#0f1923);
+    border:1px solid #2c3e50;border-radius:16px;padding:28px;box-shadow:0 30px 80px #000}
+  .modal h2{font-size:22px;margin-bottom:6px;color:var(--amber2)}
+  .modal h2 small{display:block;font-size:11px;color:var(--dim);letter-spacing:2px;margin-top:4px}
+  .modal p{font-size:13px;line-height:1.7;color:#b9c9d7;margin:8px 0}
+  .modal .cols{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:14px 0}
+  .modal .col{background:#0c161e;border:1px solid var(--line);border-radius:10px;padding:12px}
+  .modal .col h4{font-size:11px;letter-spacing:1.2px;color:var(--teal);margin-bottom:7px;text-transform:uppercase}
+  .modal .col li{font-size:11.5px;line-height:1.8;color:#aebfce;list-style:none}
+  .modal .col li::before{content:"▸ ";color:var(--amber)}
+  .bigbtn{width:100%;margin-top:10px;padding:14px;border:none;border-radius:11px;cursor:pointer;
+    background:linear-gradient(180deg,var(--amber2),#f57c00);color:#1d1205;font-weight:900;font-size:15px;
+    letter-spacing:1px;text-transform:uppercase;box-shadow:0 8px 24px #ff9d2e44}
+  .bigbtn:hover{filter:brightness(1.08)}
+  .hide{display:none!important}
+  /* barra de integridad vital */
+  .healthbar{position:relative;height:22px;background:#0a1118;border:1px solid var(--line);
+    border-radius:11px;overflow:hidden}
+  .healthbar div{height:100%;width:100%;border-radius:11px;transition:width .3s,background .3s}
+  .healthbar div.g{background:linear-gradient(90deg,#22c55e,#4ade80)}
+  .healthbar div.a{background:linear-gradient(90deg,#d97706,#f4c22e)}
+  .healthbar div.r{background:linear-gradient(90deg,#b91c1c,#ff4d5a)}
+  .healthbar span{position:absolute;inset:0;display:grid;place-items:center;
+    font:700 11px var(--mono);color:#fff;text-shadow:0 1px 3px #000}
+  .crit-row{font-size:11px;color:var(--dim);margin-top:7px;line-height:1.5}
+  .crit-row.bad{color:var(--red);font-weight:700;animation:flash 1s infinite}
+  .crit-row.warn{color:var(--amber2);font-weight:700}
+  .dead-banner{grid-column:1/3;background:#151515;border:1px solid #777;color:#d5d5d5;
+    text-align:center;font-weight:800;letter-spacing:2px;font-size:12px;padding:7px;
+    border-radius:8px;display:none}
+  .stats4{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:14px 0}
+  .stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:14px 0}
+  .stats .s{background:#0c161e;border:1px solid var(--line);border-radius:10px;padding:10px;text-align:center}
+  .stats .s b{display:block;font-family:var(--mono);font-size:18px;color:var(--teal)}
+  .stats .s span{font-size:10px;color:var(--dim)}
+  @media (max-width:980px){
+    body{overflow:auto;height:auto}
+    main{flex-direction:column;height:auto}
+    .pane{width:100%;border-right:none!important}
+    .pane.left{border-bottom:2px solid var(--line)}
+    #joy{display:block}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">WTS</div>
+  <h1>WTS Rescue<small>SIMULADOR MR · BÚSQUEDA Y RESCATE CON WEARABLE THERMAL SYSTEM</small></h1>
+  <div class="spacer"></div>
+  <div class="timer" id="timer">00:00</div>
+  <button class="hbtn" id="muteBtn">🔊 Sonido</button>
+  <button class="hbtn" id="helpBtn">❔ Ayuda</button>
+  <button class="hbtn" id="restartBtn">↻ Reiniciar</button>
+</header>
+
+<main>
+  <!-- ===================== PANEL AFECTADO (WTS) ===================== -->
+  <section class="pane left">
+    <div class="pane-title"><span class="dot v"></span> Vista del afectado · WTS (realidad mixta — cámara de escena)</div>
+    <div class="pane-body">
+      <canvas id="victimCanvas" width="800" height="520"></canvas>
+
+      <div class="grid4">
+        <div class="vcard">
+          <div class="lab">FC · PPG</div>
+          <div class="val" id="vHr">--</div><div class="unit">bpm</div>
+          <div class="sub mut" id="vHrS">MAX30102</div>
+        </div>
+        <div class="vcard">
+          <div class="lab">SpO₂ · PPG</div>
+          <div class="val" id="vSpo2">--</div><div class="unit">%</div>
+          <div class="sub mut" id="vSpo2S">MAX30102</div>
+        </div>
+        <div class="vcard">
+          <div class="lab">Temp. core</div>
+          <div class="val" id="vTemp">36.6</div><div class="unit">°C</div>
+          <div class="sub mut" id="vTempS">MAX30205</div>
+        </div>
+        <div class="vcard">
+          <div class="lab">IMU / batería</div>
+          <div class="val" id="vImu">0.1<small style="font-size:10px">g</small></div>
+          <div class="unit" id="vBatt">100% · MPU6050</div>
+          <div class="sub mut" id="vLinkS">SX1278 LoRa</div>
+        </div>
+      </div>
+
+      <div class="section">
+        <h3>❤️ Integridad vital <span class="chip" id="consciousChip">CONSCIENTE</span></h3>
+        <div class="healthbar"><div id="healthFill" class="g"></div><span id="healthLbl">100%</span></div>
+        <div class="crit-row" id="critMsg">Estable · el ambiente de los escombros drena calor (32.5 °C): usa el pad térmico</div>
+      </div>
+
+      <div class="section">
+        <h3>🌡️ Control térmico <span class="chip">MAX30205 + pad térmico nuca · rango letal 28–43.5 °C</span></h3>
+        <div class="slider-row">
+          <span class="mut" style="font-size:11px">28°C</span>
+          <input type="range" id="tempSlider" min="28" max="43.5" step="0.1" value="36.6">
+          <span class="mut" style="font-size:11px">43.5°C</span>
+          <div class="temp-big" id="tempLbl">36.6°</div>
+        </div>
+        <div class="btnrow" style="margin-top:9px">
+          <button class="btn" id="padBtn"><b>Pad térmico</b><span>apagado · calienta nuca</span></button>
+          <button class="btn" id="struggleBtn"><b>Forcejear</b><span>pico IMU · gasta batería</b></button>
+        </div>
+      </div>
+
+      <div class="section">
+        <h3>🆘 Señal SOS por tapping <span class="chip">toca el módulo WTS del cuello en la ilustración</span></h3>
+        <div class="morse" id="morseBuf">· · · — — — · · ·</div>
+        <div class="btnrow">
+          <button class="btn" id="sosInfoBtn"><b>Patrón reconocido</b><span>3 toques rápidos = SOS (golpes de rescate) · también código Morse ···———···</span></button>
+        </div>
+        <div class="log" id="victimLog"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== PANEL RESCATISTA ===================== -->
+  <section class="pane right">
+    <div class="pane-title"><span class="dot r"></span> Vista del rescatista · personaje jugable (rastreador LoRa en mano)</div>
+    <div class="pane-body">
+      <canvas id="rescueCanvas" width="960" height="560"></canvas>
+      <div class="hint">Mover: <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> o <kbd>←↑↓→</kbd> · en móvil usa el joystick · acércate a la víctima para rescatarla</div>
+
+      <div class="tracker">
+        <div class="tr-head">
+          <div class="t">📡 Rastreador WTS · enlace LoRa SX1278</div>
+          <div class="link" id="linkState">ENLAZANDO…</div>
+        </div>
+        <div class="tr-main">
+          <canvas id="radar" width="132" height="132"></canvas>
+          <div class="tr-data">
+            <div class="sig-wrap">
+              <div class="bars" id="sigBars"><i></i><i></i><i></i><i></i><i></i></div>
+              <div id="sigPct" style="font-family:var(--mono);font-size:13px;color:var(--amber2)">0%</div>
+              <div class="arrow-box">señal → <span id="dirArrow">↑</span><span id="dirTxt">—</span></div>
+            </div>
+            <div class="metric"><div class="k">FC bpm</div><div class="v" id="tHr">---</div></div>
+            <div class="metric"><div class="k">SpO₂ %</div><div class="v" id="tSpo2">---</div></div>
+            <div class="metric"><div class="k">Temp °C</div><div class="v" id="tTemp">---</div></div>
+            <div class="metric"><div class="k">Mov. IMU</div><div class="v" id="tImu">---</div></div>
+            <div class="sos-banner" id="sosBanner">⚠ ¡SOS RECIBIDO — VÍCTIMA ACTIVA!</div>
+            <div class="dead-banner" id="deadBanner">✝ LÍNEA PLANA — FC 0 · VÍCTIMA FALLECIDA</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="joy"><div class="knob"></div></div>
+  </section>
+</main>
+
+<!-- Modal inicio / ayuda -->
+<div class="overlay" id="startOverlay">
+  <div class="modal">
+    <h2>WTS Rescue — Simulador de Realidad Mixta
+      <small>PANTALLA DIVIDIDA · AFECTADO CON WTS + RESCATISTA CON RASTREADOR</small>
+    </h2>
+    <p>Un sobreviviente quedó atrapado bajo escombros tras un sismo. Lleva puesto el <b>Wearable Thermal System (WTS)</b>:
+    collar de neopreno con sensor PPG <b>MAX30102</b> (FC y SpO₂), sensor carotídeo <b>MAX30205</b> (temperatura),
+    IMU <b>MPU-6050</b>, pad térmico y radio <b>LoRa SX1278</b>. Tú operas ambas vistas.</p>
+    <div class="cols">
+      <div class="col">
+        <h4>🟥 Panel del afectado</h4>
+        <ul>
+          <li>Desliza su temperatura (28–43.5 °C): <b>el frío o calor extremos pueden matarlo</b></li>
+          <li>Vigila la barra de <b>integridad vital</b> y el estado de conciencia</li>
+          <li>El derrumbe drena calor (32.5 °C): el pad térmico de nuca puede salvarlo, pero gasta batería</li>
+          <li>Toca el módulo WTS: 3 toques rápidos o Morse ···———··· envía SOS</li>
+          <li>Si la batería muere, la radio LoRa se apaga y el rastro se pierde</li>
+        </ul>
+      </div>
+      <div class="col">
+        <h4>🟧 Panel del rescatista · MODO DIFÍCIL</h4>
+        <ul>
+          <li>Muévete con WASD / flechas / joystick entre más escombros; eres más lento</li>
+          <li>Rastreador <b>“calor o frío”</b> con menor alcance y más pérdida de paquetes</li>
+          <li>FC, SpO₂, temperatura, conciencia y alertas SOS por LoRa</li>
+          <li>Corre contra el tiempo: si la víctima entra en paro, <b>pierdes la misión</b></li>
+          <li>Llega junto a ella con vida para completar el rescate</li>
+        </ul>
+      </div>
+    </div>
+    <button class="bigbtn" id="startBtn">Iniciar misión de rescate</button>
+  </div>
+</div>
+
+<!-- Modal victoria -->
+<div class="overlay hide" id="winOverlay">
+  <div class="modal" style="max-width:520px;text-align:center">
+    <h2>✅ ¡Víctima rescatada!<small>EQUIPO DE BÚSQUEDA — OBJETIVO CUMPLIDO</small></h2>
+    <div class="stats">
+      <div class="s"><b id="winTime">--</b><span>tiempo</span></div>
+      <div class="s"><b id="winSos">0</b><span>SOS enviados</span></div>
+      <div class="s"><b id="winTemp">--°</b><span>temp. final</span></div>
+    </div>
+    <p id="winCond">Estado de la víctima al momento del encuentro.</p>
+    <button class="bigbtn" id="againBtn">Nueva misión</button>
+  </div>
+</div>
+
+<!-- Modal derrota -->
+<div class="overlay hide" id="loseOverlay">
+  <div class="modal" style="max-width:560px;text-align:center;border-color:#ff4d5a">
+    <h2 style="color:var(--red)">☠ Misión fallida — la víctima falleció
+      <small>EL WTS REPORTÓ PARO CARDÍACO · FIN DE LA MISIÓN</small>
+    </h2>
+    <div class="stats4">
+      <div class="s"><b id="loseTime">--</b><span>tiempo sobrevivido</span></div>
+      <div class="s"><b id="loseTemp">--°</b><span>temperatura final</span></div>
+      <div class="s"><b id="loseHr">--</b><span>FC final (bpm)</span></div>
+      <div class="s"><b id="loseBatt">--%</b><span>batería WTS</span></div>
+    </div>
+    <p id="loseCause" style="text-align:left"></p>
+    <button class="bigbtn" id="retryBtn">Reintentar misión</button>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* Polyfill: roundRect no existe en navegadores anteriores a 2022 */
+if(!CanvasRenderingContext2D.prototype.roundRect){
+  CanvasRenderingContext2D.prototype.roundRect=function(x,y,w,h,r){
+    if(typeof r==='number') r={tl:r,tr:r,br:r,bl:r};
+    this.moveTo(x+r.tl,y);
+    this.arcTo(x+w,y,x+w,y+h,r.tr);
+    this.arcTo(x+w,y+h,x,y+h,r.br);
+    this.arcTo(x,y+h,x,y,r.bl);
+    this.arcTo(x,y,x+w,y,r.tl);
+    this.closePath();
+    return this;
+  };
+}
+/* Cualquier error inesperado se muestra en pantalla en vez de dejar el juego mudo */
+window.addEventListener('error',e=>{
+  let b=document.getElementById('errbar');
+  if(!b){ b=document.createElement('div'); b.id='errbar';
+    b.style.cssText='position:fixed;left:8px;bottom:8px;right:8px;z-index:99;background:#3a0d12;color:#ffb3b8;'+
+      'border:1px solid #ff4d5a;border-radius:8px;padding:8px 12px;font:12px monospace;white-space:pre-wrap;';
+    document.body.appendChild(b); }
+  b.textContent='⚠ '+e.message+' ('+(e.filename||'').split('/').pop()+':'+e.lineno+')';
+});
+/* ============================================================
+   WTS RESCUE — estado global del "wearable" y la simulación
+   ============================================================ */
+const WORLD = { w: 1800, h: 1300 };
+const SIGNAL_RANGE = 1150;          // distancia donde la señal llega a ~0 (modo difícil: menos alcance)
+const AMBIENT_TEMP = 32.5;          // temperatura entre los escombros (noche tras el sismo)
+const G = {
+  running:false, started:false, muted:false,
+  t0:0, elapsed:0,
+  victim:{ x:0, y:0, temp:36.3, tempTarget:36.6, hr:75, spo2:97, imu:0.08,
+           battery:100, padOn:false, sosCount:0, lastSos:-999, alive:true,
+           radioDead:false, health:100, conscious:'CONSCIENTE', arrestGrace:0,
+           lastWarn:-99, deathCause:'', lastKnown:null },
+  rescuer:{ x:90, y:90, vx:0, vy:0, angle:0 },
+  signal:0, lastBeep:0, lastPacket:0, packetOk:true,
+  morse:{ buf:[], downAt:0, lastUp:0, triple:[] },
+  obstacles:[], rubble:[], dust:[],
+  keys:{}, joy:{active:false,x:0,y:0},
+  audio:null
+};
+
+/* ---------- Utilidades ---------- */
+const $ = id => document.getElementById(id);
+const rnd = (a,b)=>a+Math.random()*(b-a);
+const clamp = (v,a,b)=>Math.max(a,Math.min(b,v));
+const dist = (ax,ay,bx,by)=>Math.hypot(ax-bx,ay-by);
+const fmtTime = s => `${String(Math.floor(s/60)).padStart(2,'0')}:${String(Math.floor(s%60)).padStart(2,'0')}`;
+function log(where,html){ const el=$(where); const d=document.createElement('div'); d.innerHTML=html;
+  el.prepend(d); while(el.children.length>30) el.lastChild.remove(); }
+
+/* ---------- Audio (pitidos de proximidad + alarma SOS) ---------- */
+function audioInit(){
+  if(G.audio) return;
+  const AC = window.AudioContext||window.webkitAudioContext;
+  G.audio = new AC();
+}
+function beep(freq=880,dur=0.09,type='square',vol=0.05){
+  if(G.muted||!G.audio) return;
+  const o=G.audio.createOscillator(), g=G.audio.createGain();
+  o.type=type; o.frequency.value=freq;
+  g.gain.setValueAtTime(vol,G.audio.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.0001,G.audio.currentTime+dur);
+  o.connect(g).connect(G.audio.destination);
+  o.start(); o.stop(G.audio.currentTime+dur);
+}
+function sosAlarm(){ beep(660,.12,'square',.07); setTimeout(()=>beep(660,.12),160); setTimeout(()=>beep(880,.25),320); }
+function flatline(){ // tono continuo de ECG en línea plana
+  if(G.muted||!G.audio) return;
+  const o=G.audio.createOscillator(), g=G.audio.createGain();
+  o.type='sine'; o.frequency.value=190;
+  g.gain.setValueAtTime(.09,G.audio.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.0001,G.audio.currentTime+1.6);
+  o.connect(g).connect(G.audio.destination); o.start(); o.stop(G.audio.currentTime+1.65);
+}
+
+/* ============================================================
+   Generación del mundo de escombros
+   ============================================================ */
+function generateWorld(){
+  G.obstacles=[]; G.rubble=[];
+  // escombros dispersos (rectángulos de colisión) — modo difícil: más obstáculos
+  for(let i=0;i<34;i++){
+    const w=rnd(70,190), h=rnd(50,150);
+    const o={x:rnd(260,WORLD.w-w-40), y:rnd(160,WORLD.h-h-40), w, h,
+             rot:rnd(-0.12,0.12), tone:rnd(0,1)};
+    // mantener despejado el punto de aparición del rescatista
+    if(o.x<200 && o.y<200) continue;
+    if(dist(o.x+w/2,o.y+h/2,90,90)<230) continue;
+    G.obstacles.push(o);
+  }
+  // víctima: posición alejana del rescatista, sobre un montón especial
+  let vx,vy,tries=0;
+  do{ vx=rnd(500,WORLD.w-160); vy=rnd(420,WORLD.h-160); tries++; }
+  while(dist(vx,vy,90,90)<880 && tries<100);
+  G.victim.x=vx; G.victim.y=vy;
+  G.rubble.push({x:vx-95,y:vy-70,w:190,h:140,special:true,rot:rnd(-.1,.1)});
+  for(let i=0;i<70;i++) G.rubble.push({x:rnd(0,WORLD.w),y:rnd(0,WORLD.h),r:rnd(3,11)});
+  G.dust=[];
+  for(let i=0;i<45;i++) G.dust.push({x:rnd(0,WORLD.w),y:rnd(0,WORLD.h),
+    s:rnd(.4,1.6), vx:rnd(-8,8), vy:rnd(-14,-4), a:rnd(.05,.22)});
+}
+function collides(x,y,r){
+  if(x<r||y<r||x>WORLD.w-r||y>WORLD.h-r) return true;
+  for(const o of G.obstacles){
+    if(x+r>o.x && x-r<o.x+o.w && y+r>o.y && y-r<o.y+o.h) return true;
+  }
+  for(const rb of G.rubble){ if(rb.special &&
+      x+r>rb.x && x-r<rb.x+rb.w && y+r>rb.y && y-r<rb.y+rb.h) return true; }
+  return false;
+}
+
+/* =================================================================
+   Motor de signos vitales del WTS (fisiología simplificada)
+   ============================================================ */
+/* Textos clínicos para el informe de defunción */
+const DEATH_TEXT={
+  'hipotermia profunda':'La temperatura core cayó por debajo de ~29 °C: el corazón entró en paro por hipotermia profunda. El pad térmico de nuca podría haberlo evitado.',
+  'golpe de calor terminal':'La temperatura core superó ~42.5 °C: colapso cardiovascular y fallo multiorgánico por golpe de calor terminal.',
+  'golpe de calor':'Golpe de calor sostenido: la FC y la demanda metabólica superaron el límite cardiaco.',
+  'hipotermia severa':'Hipotermia severa prolongada (<32 °C): la bradicardia degeneró en paro cardiaco.',
+  'hipertermia severa':'Hipertermia severa sostenida (>40 °C) con daño orgánico acumulado irreversible.',
+  'hipoxemia grave':'La saturación de oxígeno se desplomó (SpO₂ <82%): el cerebro y el corazón sufrieron hipoxia letal.',
+  'bradicardia crítica':'Bradicardia crítica (FC <30 lpm): el gasto cardiaco fue insuficiente para perfundir los órganos.',
+  'taquicardia crítica':'Taquicardia crítica (FC >186 lpm): el corazón agotó su reserva y entró en paro.',
+  'falla multiorgánica':'El estado fisiológico combinado provocó una falla multiorgánica irreversible.'
+};
+function vitalsTick(dt){
+  const v=G.victim;
+  if(!v.alive){ v.hr=0; v.spo2=0; v.imu=0; v.conscious='PARO CARDÍACO'; return; }
+  /* --- Temperatura: persigue el objetivo + deriva hacia el ambiente frío del derrumbe --- */
+  const kTarget=0.28, kAmb=v.padOn?0.012:0.05;
+  const dT = kTarget*(v.tempTarget-v.temp) + kAmb*(AMBIENT_TEMP-v.temp)
+           + (v.padOn && v.temp<37.2 ? 0.075 : 0);
+  v.temp = clamp(v.temp + dT*dt, 27.5, 44);
+  /* --- FC (PPG): bradicardia por frío, taquicardia por calor --- */
+  let hrBase;
+  if(v.temp<37) hrBase = 78 - (37-v.temp)*8.5;
+  else hrBase = 78 + (v.temp-37)*12;
+  if(v.temp>39.5) hrBase += (v.temp-39.5)*16;
+  v.hr = clamp(hrBase + rnd(-2.5,2.5) + (G.elapsed-v.lastSos<6? rnd(4,10):0), 16, 196);
+  /* --- SpO2: se desploma en los extremos térmicos --- */
+  let spBase=97.5;
+  if(v.temp<35) spBase = 97.5-(35-v.temp)*3.0;
+  if(v.temp>39.5) spBase = 97.5-(v.temp-39.5)*3.6;
+  v.spo2 = clamp(spBase+rnd(-.6,.6), 72, 99);
+  /* --- IMU vuelve al reposo --- */
+  v.imu = Math.max(0.05, v.imu - dt*0.5);
+  /* --- Batería LiPo: el frío reduce su rendimiento; el pad exige corriente --- */
+  const coldPen = v.temp<35 ? 1+(35-v.temp)*0.28 : 1;
+  v.battery = Math.max(0, v.battery - dt*(0.045+(v.padOn?0.14:0))*coldPen);
+  if(v.battery<=0 && !v.radioDead){
+    v.radioDead=true;
+    log('victimLog','<span class="r">[ENERGÍA]</span> LiPo 523450 agotada · radio SX1278 apagada · última posición guardada en el rastreador');
+  }
+  /* --- Daño fisiológico acumulado (integridad vital) --- */
+  let dmg=0, cause='';
+  if(v.temp<=28.8){ dmg=9;    cause='hipotermia profunda'; }
+  else if(v.temp<32){ dmg=3.2; cause='hipotermia severa'; }
+  else if(v.temp<34){ dmg=0.9; cause='hipotermia severa'; }
+  if(v.temp>=42.6){ dmg=Math.max(dmg,9);   cause='golpe de calor terminal'; }
+  else if(v.temp>=41){ dmg=Math.max(dmg,5.5); cause=cause||'golpe de calor'; }
+  else if(v.temp>=40){ dmg=Math.max(dmg,2.6); cause=cause||'hipertermia severa'; }
+  if(v.spo2<82){ dmg=Math.max(dmg,4); cause=cause||'hipoxemia grave'; }
+  else if(v.spo2<88){ dmg=Math.max(dmg,1.2); cause=cause||'hipoxemia grave'; }
+  if(v.hr<30){ dmg=Math.max(dmg,5); cause=cause||'bradicardia crítica'; }
+  if(v.hr>186){ dmg=Math.max(dmg,5); cause=cause||'taquicardia crítica'; }
+  const safe = v.temp>=35 && v.temp<=38.2 && v.spo2>=92;
+  if(dmg>0){
+    v.health=Math.max(0, v.health-dmg*dt);
+    if(cause) v.deathCause=cause;
+    if(G.elapsed-v.lastWarn>4.5){
+      v.lastWarn=G.elapsed;
+      log('victimLog',`<span class="r">[CRÍTICO]</span> ${cause} · integridad vital ${v.health.toFixed(0)}%`);
+      beep(300,.18,'sawtooth',.06);
+    }
+  } else if(safe && v.health<100){
+    v.health=Math.min(100, v.health+0.7*dt); // se recupera si se estabiliza
+    v.deathCause='';
+  }
+  /* --- Conciencia --- */
+  if(v.health<25||v.temp<32||v.temp>41||v.spo2<85) v.conscious='INCONSCIENTE';
+  else if(v.health<55||v.temp<34||v.temp>39.5) v.conscious='SOMNOLIENTO';
+  else v.conscious='CONSCIENTE';
+  if(v.health<=0) die(v.deathCause||'falla multiorgánica');
+}
+/* Muerte: línea plana, fin de misión e informe clínico */
+function die(cause){
+  const v=G.victim;
+  if(!v.alive) return;
+  v.alive=false; v.hr=0; v.spo2=0; v.imu=0;
+  v.conscious='PARO CARDÍACO'; v.deathCause=cause; G.running=false;
+  flatline();
+  log('victimLog',`<span class="r">[PARO CARDÍACO]</span> víctima fallecida · causa: ${cause}`);
+  $('loseTime').textContent=fmtTime(G.elapsed);
+  $('loseTemp').textContent=v.temp.toFixed(1)+'°';
+  $('loseHr').textContent='0';
+  $('loseBatt').textContent=v.battery.toFixed(0)+'%';
+  $('loseCause').innerHTML=`<b>Causa de muerte: ${cause}.</b><br>${DEATH_TEXT[cause]||DEATH_TEXT['falla multiorgánica']}`;
+  $('deadBanner').style.display='block';
+  $('loseOverlay').classList.remove('hide');
+}
+function tempStatus(t){
+  if(t<29) return ['PARO POR FRÍO','bad'];
+  if(t<32) return ['HIPOTERMIA PROFUNDA','bad'];
+  if(t<34) return ['HIPOTERMIA GRAVE','bad'];
+  if(t<35) return ['HIPOTERMIA','bad'];
+  if(t<36) return ['FRÍO','warn'];
+  if(t<=37.3) return ['NORMAL','ok'];
+  if(t<38.2) return ['ESTRÉS TÉRMICO','warn'];
+  if(t<39.5) return ['HIPERTERMIA','bad'];
+  if(t<41) return ['GOLPE DE CALOR','bad'];
+  if(t<42.5) return ['GOLPE DE CALOR GRAVE','bad'];
+  return ['PARO POR CALOR','bad'];
+}
+function hrStatus(h){ return h<50?['bradicardia','bad']:h>110?['taquicardia','warn']:['normal','ok']; }
+function spo2Status(s){ return s<90?['hipoxemia','bad']:s<94?['baja','warn']:['normal','ok']; }
+
+/* ============================================================
+   SOS — tapping sobre el módulo WTS (collar) + Morse
+   ============================================================ */
+const MORSE={ '.-':'A','-...':'B','-.-.':'C','-..':'D','.':'E','..-.':'F','--.':'G','....':'H',
+  '..':'I','.---':'J','-.-':'K','.-..':'L','--':'M','-.':'N','---':'O','.--.':'P','--.-':'Q',
+  '.-.':'R','...':'S','-':'T','..-':'U','...-':'V','.--':'W','-..-':'X','-.--':'Y','--..':'Z',
+  '...---...':'SOS' };
+function tapDown(){ G.morse.downAt=performance.now(); }
+function tapUp(){
+  const now=performance.now(), dur=now-G.morse.downAt;
+  const sym = dur<260 ? '.' : '-';
+  G.morse.buf.push(sym); G.morse.lastUp=now;
+  G.victim.imu=Math.min(2.2,G.victim.imu+0.55);
+  renderMorse();
+  // --- patrón de 3 toques rápidos (golpes de rescate) ---
+  const tr=G.morse.triple; tr.push(now);
+  while(tr.length && now-tr[0]>1100) tr.shift();
+  if(tr.length>=3 && G.morse.buf.slice(-3).every(s=>s==='.')){
+    sendSOS('patrón de 3 golpes');
+    G.morse.triple=[]; G.morse.buf=[]; renderMorse(); return;
+  }
+  // --- Morse completo ...---... ---
+  const joined=G.morse.buf.join('');
+  if(joined.endsWith('...---...')){
+    sendSOS('código Morse ···———···');
+    G.morse.buf=[]; renderMorse();
+  }
+}
+function renderMorse(){
+  $('morseBuf').textContent = G.morse.buf.length ? G.morse.buf.map(s=>s==='.'?'·':'—').join(' ')
+                                                  : '· · · — — — · · ·';
+}
+setInterval(()=>{ // decodificar letra tras pausa
+  if(!G.morse.buf.length || performance.now()-G.morse.lastUp<900) return;
+  const word=G.morse.buf.join('');
+  if(word!=='...---...'){
+    const ch=MORSE[word]||'?';
+    if(ch!=='SOS') log('victimLog',`<span class="t">[MORSE]</span> patrón <b>${word.replace(/\./g,'·').replace(/-/g,'—')}</b> → letra <b>${ch}</b>`);
+  }
+  G.morse.buf=[]; renderMorse();
+},300);
+
+function sendSOS(cause){
+  if(G.victim.radioDead || G.victim.battery<=0){ log('victimLog',`<span class="r">[SOS BLOQUEADO]</span> radio LoRa sin batería`); return; }
+  if(!G.victim.alive){ return; }
+  G.victim.sosCount++; G.victim.lastSos=G.elapsed;
+  G.victim.imu=1.6;
+  log('victimLog',`<span class="r">[SOS ENVIADO]</span> ${cause} · transmitido por LoRa SX1278 (#${G.victim.sosCount})`);
+  $('sosBanner').style.display='block';
+  sosAlarm();
+  setTimeout(()=>{ if(G.elapsed-G.victim.lastSos>=9) $('sosBanner').style.display='none'; },10000);
+}
+
+/* ============================================================
+   Lienzo del AFECTADO (escena de derrumbe con WTS)
+   ============================================================ */
+const vc=$('victimCanvas'), vx=vc.getContext('2d');
+// zona del módulo WTS en el cuello (coords internas 800x520)
+const TAP_ZONE={x:362,y:238,w:82,h:64};
+let breath=0, shiver=0;
+function drawVictimScene(){
+  breath+=0.025; shiver+=0.11;
+  const v=G.victim;
+  const sh = (v.alive && v.temp<35) ? Math.sin(shiver*2.2)*2.4 : 0;
+  vx.clearRect(0,0,800,520);
+  // fondo: derrumbe
+  const bg=vx.createLinearGradient(0,0,0,520);
+  bg.addColorStop(0,'#2a2622'); bg.addColorStop(.6,'#1b1917'); bg.addColorStop(1,'#121110');
+  vx.fillStyle=bg; vx.fillRect(0,0,800,520);
+  // polvo
+  for(const d of G.dust){
+    vx.globalAlpha=d.a; vx.fillStyle='#c9b48f';
+    vx.beginPath(); vx.arc(d.x*800/WORLD.w, d.y*520/WORLD.h, d.s,0,7); vx.fill();
+  }
+  vx.globalAlpha=1;
+  // losas de concreto atrás
+  vx.fillStyle='#34302b';
+  vx.beginPath(); vx.moveTo(0,90); vx.lineTo(180,40); vx.lineTo(300,120); vx.lineTo(120,170); vx.closePath(); vx.fill();
+  vx.fillStyle='#2b2824';
+  vx.beginPath(); vx.moveTo(610,30); vx.lineTo(800,80); vx.lineTo(800,200); vx.lineTo(640,150); vx.closePath(); vx.fill();
+  // barras de refuerzo
+  vx.strokeStyle='#5a4a3a'; vx.lineWidth=4;
+  vx.beginPath(); vx.moveTo(120,60); vx.lineTo(260,150); vx.moveTo(680,70); vx.lineTo(560,180); vx.stroke();
+
+  vx.save(); vx.translate(sh, v.alive?Math.sin(breath)*1.2:0);
+  /* ---- cuerpo ---- */
+  // buzo fleece (hombros)
+  vx.fillStyle='#4a5158';
+  vx.beginPath();
+  vx.moveTo(230,520); vx.quadraticCurveTo(250,330,350,295);
+  vx.quadraticCurveTo(400,278,450,295);
+  vx.quadraticCurveTo(555,330,575,520); vx.closePath(); vx.fill();
+  // cremallera
+  vx.strokeStyle='#33393f'; vx.lineWidth=5;
+  vx.beginPath(); vx.moveTo(400,300); vx.lineTo(400,520); vx.stroke();
+  // sombra cuello
+  vx.fillStyle='#caa083'; vx.fillRect(372,215,56,60);
+  // cabeza
+  vx.fillStyle='#e0b896';
+  vx.beginPath(); vx.ellipse(400,170,48,56,0,0,7); vx.fill();
+  // cabello
+  vx.fillStyle='#3a2f28';
+  vx.beginPath(); vx.ellipse(400,128,49,26,0,Math.PI,0); vx.fill();
+  vx.fillRect(351,126,98,18);
+  // oreja + clip PPG (MAX30102)
+  vx.fillStyle='#e0b896'; vx.beginPath(); vx.ellipse(449,172,9,13,0,0,7); vx.fill();
+  vx.fillStyle='#161b21'; vx.roundRect(446,164,15,18,4); vx.fill();
+  vx.fillStyle='#ff4d5a'; vx.beginPath(); vx.arc(453.5,173,2.4,0,7); vx.fill();
+  // cable del clip al collar
+  vx.strokeStyle='#222'; vx.lineWidth=2.5;
+  vx.beginPath(); vx.moveTo(453,182); vx.quadraticCurveTo(470,215,438,246); vx.stroke();
+
+  /* ---- WTS: collar de neopreno ---- */
+  vx.fillStyle='#23282e';
+  vx.beginPath();
+  vx.moveTo(356,222); vx.quadraticCurveTo(400,246,444,222);
+  vx.lineTo(448,262); vx.quadraticCurveTo(400,286,352,262); vx.closePath(); vx.fill();
+  // pad térmico posterior (nuca), asoma por el lado
+  const padGlow = v.padOn ? 0.85+Math.sin(breath*3)*0.15 : 0.25;
+  vx.fillStyle=`rgba(255,120,20,${padGlow})`;
+  vx.roundRect(438,226,20,34,5); vx.fill();
+  if(v.padOn){ vx.shadowColor='#ff7a14'; vx.shadowBlur=18;
+    vx.fillStyle=`rgba(255,150,60,${padGlow})`; vx.roundRect(438,226,20,34,5); vx.fill(); vx.shadowBlur=0; }
+  // mylar aislante (línea plateada)
+  vx.strokeStyle='#9fb2c2'; vx.lineWidth=2;
+  vx.beginPath(); vx.moveTo(356,258); vx.quadraticCurveTo(400,282,446,258); vx.stroke();
+
+  /* ---- módulo WTS (zona de tapping) ---- */
+  const pulse = 0.5+Math.sin(breath*2)*0.5;
+  vx.strokeStyle=`rgba(47,214,195,${0.35+pulse*0.5})`; vx.lineWidth=2.5;
+  vx.setLineDash([6,5]);
+  vx.strokeRect(TAP_ZONE.x-5,TAP_ZONE.y-5,TAP_ZONE.w+10,TAP_ZONE.h+10);
+  vx.setLineDash([]);
+  vx.fillStyle='#10161c'; vx.roundRect(TAP_ZONE.x,TAP_ZONE.y,TAP_ZONE.w,TAP_ZONE.h,9); vx.fill();
+  vx.fillStyle='#1e2933'; vx.roundRect(TAP_ZONE.x+8,TAP_ZONE.y+8,TAP_ZONE.w-16,TAP_ZONE.h-16,6); vx.fill();
+  // LED estado
+  vx.fillStyle = v.battery>0 ? (G.elapsed-v.lastSos<6?'#ff4d5a':'#4ade80') : '#555';
+  vx.beginPath(); vx.arc(TAP_ZONE.x+16,TAP_ZONE.y+16,4,0,7); vx.fill();
+  vx.fillStyle='#8fa8bd'; vx.font='bold 11px monospace';
+  vx.fillText('WTS', TAP_ZONE.x+30, TAP_ZONE.y+20);
+  vx.fillStyle='#5d7488'; vx.font='8px monospace';
+  vx.fillText('TAP · SOS', TAP_ZONE.x+12, TAP_ZONE.y+46);
+
+  // bolsillo electrónica (pecho)
+  vx.fillStyle='#20262c'; vx.roundRect(470,360,84,60,8); vx.fill();
+  vx.strokeStyle='#111'; vx.lineWidth=2;
+  vx.beginPath(); vx.moveTo(438,268); vx.quadraticCurveTo(470,320,492,360); vx.stroke();
+  vx.fillStyle='#7d93a8'; vx.font='8.5px monospace';
+  vx.fillText('LicheeRV W',478,382); vx.fillText('LoRa SX1278',478,395); vx.fillText('LiPo 523450',478,408);
+  vx.restore();
+
+  /* ---- losa de escombros sobre el cuerpo ---- */
+  vx.fillStyle='#3b3732';
+  vx.beginPath(); vx.moveTo(150,520); vx.lineTo(210,430); vx.lineTo(620,440); vx.lineTo(690,520); vx.closePath(); vx.fill();
+  vx.fillStyle='#2e2b27';
+  vx.beginPath(); vx.moveTo(210,430); vx.lineTo(620,440); vx.lineTo(590,468); vx.lineTo(240,458); vx.closePath(); vx.fill();
+  // rocas sueltas
+  for(let i=0;i<9;i++){ vx.fillStyle=i%2?'#45403a':'#33302b';
+    vx.beginPath(); vx.arc(140+i*72+rnd(-6,6), 470+rnd(-10,26), rnd(14,26),0,7); vx.fill(); }
+
+  /* ---- tinte térmico según temperatura ---- */
+  let tint=null;
+  if(v.temp<35.5) tint=`rgba(70,140,255,${clamp((35.5-v.temp)/5,.05,.38)})`;
+  else if(v.temp>38) tint=`rgba(255,70,40,${clamp((v.temp-38)/4,.05,.38)})`;
+  if(tint){ vx.fillStyle=tint; vx.fillRect(0,0,800,520); }
+
+  // etiquetas de sensores
+  vx.font='10px monospace';
+  const tags=[['PPG MAX30102',470,158],['MAX30205',288,235],['Pad nuca',475,240],['MPU-6050 + LoRa',560,392]];
+  vx.strokeStyle='#ff9d2e99'; vx.fillStyle='#ffb95c';
+  for(const [t,x,y] of tags){
+    vx.globalAlpha=.85; vx.fillText(t,x,y);
+    vx.beginPath(); vx.moveTo(x-6,y-4); vx.lineTo(x-14,y-9); vx.stroke();
+  }
+  vx.globalAlpha=1;
+  /* estado de conciencia sobre la escena */
+  if(v.alive && v.conscious!=='CONSCIENTE'){
+    vx.fillStyle = v.conscious==='INCONSCIENTE' ? 'rgba(255,77,90,.92)' : 'rgba(255,157,46,.92)';
+    vx.roundRect(300,60,200,30,15); vx.fill();
+    vx.fillStyle='#1a1206'; vx.font='bold 13px sans-serif'; vx.textAlign='center';
+    vx.fillText('● '+v.conscious,400,80); vx.textAlign='left';
+  }
+  if(v.radioDead){
+    vx.fillStyle='rgba(20,10,10,.55)'; vx.fillRect(0,0,800,520);
+    vx.fillStyle='#ff9d2e'; vx.font='bold 20px sans-serif'; vx.textAlign='center';
+    vx.fillText('RADIO LoRa APAGADA — BATERÍA AGOTADA',400,255);
+    vx.font='13px sans-serif'; vx.fillStyle='#dce7f0';
+    vx.fillText('Los sensores locales siguen activos, pero el rescatista ya no recibe telemetría',400,282);
+    vx.textAlign='left';
+  }
+  if(!v.alive){
+    vx.fillStyle='rgba(5,5,8,.78)'; vx.fillRect(0,0,800,520);
+    vx.fillStyle='#ff4d5a'; vx.font='bold 26px sans-serif'; vx.textAlign='center';
+    vx.fillText('✝ VÍCTIMA FALLECIDA',400,248);
+    vx.font='15px monospace'; vx.fillStyle='#dce7f0';
+    vx.fillText('PARO CARDÍACO · LÍNEA PLANA · '+v.deathCause.toUpperCase(),400,280);
+    vx.textAlign='left';
+  }
+}
+// eventos de tapping en el collar
+function canvasPos(e){
+  const r=vc.getBoundingClientRect();
+  const cx=(e.touches?e.touches[0].clientX:e.clientX-r.left)*(800/r.width);
+  const cy=(e.touches?e.touches[0].clientY:e.clientY-r.top)*(520/r.height);
+  return {x:cx,y:cy};
+}
+function inTap(p){ return p.x>=TAP_ZONE.x-12 && p.x<=TAP_ZONE.x+TAP_ZONE.w+12
+                     && p.y>=TAP_ZONE.y-12 && p.y<=TAP_ZONE.y+TAP_ZONE.h+12; }
+vc.addEventListener('pointerdown',e=>{ if(!G.running)return; const p=canvasPos(e);
+  if(inTap(p)){ tapDown(); vc.setPointerCapture(e.pointerId); } });
+vc.addEventListener('pointerup',e=>{ if(!G.running)return; const p=canvasPos(e); if(inTap(p)) tapUp(); });
+
+/* ============================================================
+   Lienzo del RESCATISTA (mundo top-down)
+   ============================================================ */
+const rc=$('rescueCanvas'), rx=rc.getContext('2d');
+const keys=G.keys;
+addEventListener('keydown',e=>{ keys[e.key.toLowerCase()]=true;
+  if(['arrowup','arrowdown','arrowleft','arrowright',' '].includes(e.key.toLowerCase())) e.preventDefault(); });
+addEventListener('keyup',e=>{ keys[e.key.toLowerCase()]=false; });
+
+// joystick táctil
+const joyEl=$('joy'), knob=joyEl.querySelector('.knob');
+let joyId=null;
+joyEl.addEventListener('pointerdown',e=>{ joyId=e.pointerId; joyEl.setPointerCapture(joyId); G.joy.active=true; joyMove(e); });
+joyEl.addEventListener('pointermove',e=>{ if(e.pointerId===joyId) joyMove(e); });
+joyEl.addEventListener('pointerup',()=>{ joyId=null; G.joy.active=false; G.joy.x=G.joy.y=0;
+  knob.style.transform='translate(0,0)'; });
+function joyMove(e){
+  const r=joyEl.getBoundingClientRect();
+  let dx=e.clientX-(r.left+r.width/2), dy=e.clientY-(r.top+r.height/2);
+  const max=42, m=Math.hypot(dx,dy)||1;
+  if(m>max){ dx=dx/m*max; dy=dy/m*max; }
+  G.joy.x=dx/max; G.joy.y=dy/max;
+  knob.style.transform=`translate(${dx}px,${dy}px)`;
+}
+
+function updatePlayer(dt){
+  const p=G.rescuer, sp=205;   // modo difícil: desplazamiento más lento
+  let ax=0, ay=0;
+  if(keys['w']||keys['arrowup']) ay-=1;
+  if(keys['s']||keys['arrowdown']) ay+=1;
+  if(keys['a']||keys['arrowleft']) ax-=1;
+  if(keys['d']||keys['arrowright']) ax+=1;
+  if(G.joy.active){ ax=G.joy.x; ay=G.joy.y; }
+  const m=Math.hypot(ax,ay);
+  if(m>0){ ax/=m||1; ay/=m||1; p.angle=Math.atan2(ay,ax); }
+  const nx=p.x+ax*sp*dt, ny=p.y+ay*sp*dt;
+  if(!collides(nx,p.y,16)) p.x=nx;
+  if(!collides(p.x,ny,16)) p.y=ny;
+}
+
+function drawRescueWorld(){
+  const p=G.rescuer;
+  const camX=clamp(p.x-rc.width/2,0,Math.max(0,WORLD.w-rc.width));
+  const camY=clamp(p.y-rc.height/2,0,Math.max(0,WORLD.h-rc.height));
+  rx.clearRect(0,0,rc.width,rc.height);
+  // suelo
+  const g=rx.createLinearGradient(0,0,0,rc.height);
+  g.addColorStop(0,'#232019'); g.addColorStop(1,'#181612');
+  rx.fillStyle=g; rx.fillRect(0,0,rc.width,rc.height);
+  // cuadrícula
+  rx.strokeStyle='#ffffff0a'; rx.lineWidth=1;
+  for(let x=-(camX%64);x<rc.width;x+=64){ rx.beginPath(); rx.moveTo(x,0); rx.lineTo(x,rc.height); rx.stroke(); }
+  for(let y=-(camY%64);y<rc.height;y+=64){ rx.beginPath(); rx.moveTo(0,y); rx.lineTo(rc.width,y); rx.stroke(); }
+  // bordes del mundo
+  rx.strokeStyle='#ff9d2e55'; rx.lineWidth=3; rx.setLineDash([12,10]);
+  rx.strokeRect(-camX,-camY,WORLD.w,WORLD.h); rx.setLineDash([]);
+  // rocas menores
+  for(const rb of G.rubble){ if(rb.special) continue;
+    rx.fillStyle='#3d382f'; rx.beginPath(); rx.arc(rb.x-camX,rb.y-camY,rb.r,0,7); rx.fill(); }
+  // escombros grandes
+  for(const o of G.obstacles){
+    rx.save(); rx.translate(o.x-camX+o.w/2,o.y-camY+o.h/2); rx.rotate(o.rot);
+    rx.fillStyle=o.tone?'#4a443c':'#403a33';
+    rx.roundRect(-o.w/2,-o.h/2,o.w,o.h,8); rx.fill();
+    rx.fillStyle='#ffffff08'; rx.roundRect(-o.w/2+6,-o.h/2+6,o.w-12,10,4); rx.fill();
+    rx.strokeStyle='#221f1a'; rx.lineWidth=2; rx.roundRect(-o.w/2,-o.h/2,o.w,o.h,8); rx.stroke();
+    rx.restore();
+  }
+  // montón de la víctima (solo se distingue de cerca)
+  for(const rb of G.rubble){ if(!rb.special) continue;
+    const close = G.signal>0.45;
+    rx.save(); rx.translate(rb.x-camX+rb.w/2,rb.y-camY+rb.h/2); rx.rotate(rb.rot);
+    rx.globalAlpha=close?1:.55;
+    rx.fillStyle='#544c42'; rx.beginPath();
+    rx.moveTo(-rb.w/2,rb.h/2); rx.lineTo(-rb.w/3,-rb.h/2); rx.lineTo(rb.w/3,-rb.h/3);
+    rx.lineTo(rb.w/2,rb.h/2); rx.closePath(); rx.fill();
+    rx.strokeStyle='#2a2620'; rx.stroke();
+    if(close){ // señal bajo los escombros: vida o paro
+      if(G.victim.alive){
+        const a=.4+Math.sin(G.elapsed*6)*.35;
+        rx.fillStyle=`rgba(255,77,90,${a})`;
+        rx.beginPath(); rx.arc(0,10,7,0,7); rx.fill();
+        rx.fillStyle='#fff'; rx.font='bold 11px sans-serif'; rx.textAlign='center';
+        rx.fillText('💓 SEÑAL DE VIDA',0,-rb.h/2-12);
+      } else {
+        rx.fillStyle='#9aa3ab'; rx.font='bold 12px sans-serif'; rx.textAlign='center';
+        rx.fillText('✝ PARO CARDÍACO',0,-rb.h/2-12);
+      }
+      rx.textAlign='left';
+    }
+    rx.restore(); rx.globalAlpha=1;
+  }
+  // ondas de proximidad (hot/cold) alrededor del rescatista
+  if(G.signal>0.05){
+    for(let i=0;i<3;i++){
+      const ph=(G.elapsed*1.4+i/3)%1;
+      rx.strokeStyle=`rgba(255,157,46,${(1-ph)*G.signal*.5})`;
+      rx.lineWidth=2;
+      rx.beginPath(); rx.arc(p.x-camX,p.y-camY,12+ph*90*G.signal+10,0,7); rx.stroke();
+    }
+  }
+  // rescatista (casco + chaleco)
+  const px=p.x-camX, py=p.y-camY;
+  rx.save(); rx.translate(px,py); rx.rotate(p.angle);
+  rx.fillStyle='#0e1318'; rx.beginPath(); rx.arc(0,0,17,0,7); rx.fill();
+  rx.fillStyle='#ff8a1e'; rx.beginPath(); rx.arc(0,0,13,0,7); rx.fill();       // chaleco
+  rx.fillStyle='#ffd9b0'; rx.beginPath(); rx.arc(3,0,7,0,7); rx.fill();        // cara
+  rx.fillStyle='#f4c22e'; rx.beginPath(); rx.arc(4,0,8,-1.1,1.1); rx.stroke(); // casco
+  rx.strokeStyle='#f4c22e'; rx.lineWidth=3; rx.beginPath(); rx.arc(4,0,8,-1.1,1.1); rx.stroke();
+  // rastreador en mano
+  rx.fillStyle='#151c24'; rx.roundRect(10,-6,12,12,3); rx.fill();
+  rx.fillStyle='#2fd6c3'; rx.fillRect(12,-4,8,3);
+  rx.restore();
+  // partículas de polvo flotantes
+  for(const d of G.dust){
+    d.x+=d.vx*0.016; d.y+=d.vy*0.016;
+    if(d.y<0){d.y=WORLD.h; d.x=rnd(0,WORLD.w);}
+    rx.globalAlpha=d.a; rx.fillStyle='#c9b48f';
+    rx.beginPath(); rx.arc(d.x-camX,d.y-camY,d.s,0,7); rx.fill();
+  }
+  rx.globalAlpha=1;
+}
+
+/* ============================================================
+   Radar del rastreador
+   ============================================================ */
+const rd=$('radar'), rdx=rd.getContext('2d');
+function drawRadar(){
+  rdx.clearRect(0,0,132,132);
+  rdx.fillStyle='#071016'; rdx.beginPath(); rdx.arc(66,66,64,0,7); rdx.fill();
+  rdx.strokeStyle='#1d3542';
+  for(const rr of [20,40,60]){ rdx.beginPath(); rdx.arc(66,66,rr,0,7); rdx.stroke(); }
+  rdx.beginPath(); rdx.moveTo(66,4); rdx.lineTo(66,128); rdx.moveTo(4,66); rdx.lineTo(128,66); rdx.stroke();
+  // barrido
+  const ang=G.elapsed*1.6;
+  const grad=rdx.createConicGradient?.(ang,66,66);
+  if(grad){ grad.addColorStop(0,'rgba(47,214,195,.35)'); grad.addColorStop(.18,'rgba(47,214,195,0)');
+    grad.addColorStop(1,'rgba(47,214,195,0)');
+    rdx.fillStyle=grad; rdx.beginPath(); rdx.moveTo(66,66); rdx.arc(66,66,60,0,7); rdx.fill(); }
+  // blip de la víctima (con ruido cuando la señal es débil)
+  const p=G.rescuer, v=G.victim;
+  let dx=v.x-p.x, dy=v.y-p.y, d=Math.hypot(dx,dy);
+  const jitter=(1-G.signal)*46;
+  dx+=rnd(-jitter,jitter); dy+=rnd(-jitter,jitter);
+  const sc=60/SIGNAL_RANGE;
+  let bx=66+dx*sc, by=66+dy*sc;
+  const bm=Math.hypot(bx-66,by-66);
+  if(bm>56){ bx=66+(bx-66)/bm*56; by=66+(by-66)/bm*56; }
+  const radioViva = !G.victim.radioDead && G.victim.battery>0;
+  if(!G.victim.alive && radioViva){
+    // línea plana: marcador gris con X en la posición real
+    rdx.strokeStyle='#9aa3ab'; rdx.lineWidth=2.5;
+    rdx.beginPath(); rdx.moveTo(bx-6,by-6); rdx.lineTo(bx+6,by+6);
+    rdx.moveTo(bx+6,by-6); rdx.lineTo(bx-6,by+6); rdx.stroke();
+    rdx.fillStyle='#9aa3ab'; rdx.font='bold 8px monospace'; rdx.textAlign='center';
+    rdx.fillText('PARO',bx,by-10); rdx.textAlign='left';
+  } else if(G.victim.radioDead && G.victim.lastKnown){
+    // radio muerta: última posición conocida
+    const lk=G.victim.lastKnown;
+    let lx=66+(lk.x-p.x)*sc, ly=66+(lk.y-p.y)*sc;
+    const lm=Math.hypot(lx-66,ly-66);
+    if(lm>56){ lx=66+(lx-66)/lm*56; ly=66+(ly-66)/lm*56; }
+    rdx.strokeStyle='#7d8a96'; rdx.lineWidth=1.5; rdx.setLineDash([3,3]);
+    rdx.beginPath(); rdx.arc(lx,ly,6,0,7); rdx.stroke(); rdx.setLineDash([]);
+    rdx.fillStyle='#7d8a96'; rdx.font='bold 7px monospace'; rdx.textAlign='center';
+    rdx.fillText('ÚLT. POS',lx,ly-9); rdx.textAlign='left';
+  } else if(radioViva){
+    const size=3+G.signal*7, alpha=.35+G.signal*.65;
+    rdx.fillStyle=`rgba(255,77,90,${alpha})`;
+    rdx.beginPath(); rdx.arc(bx,by,size,0,7); rdx.fill();
+    rdx.strokeStyle=`rgba(255,77,90,${alpha*.5})`; rdx.lineWidth=1.5;
+    rdx.beginPath(); rdx.arc(bx,by,size+4+Math.sin(G.elapsed*5)*2,0,7); rdx.stroke();
+  }
+  // centro (rescatista)
+  rdx.fillStyle='#2fd6c3'; rdx.beginPath(); rdx.arc(66,66,3.5,0,7); rdx.fill();
+}
+
+/* ============================================================
+   HUD / tracker — actualización por proximidad ("calor o frío")
+   ============================================================ */
+function updateHUD(){
+  const v=G.victim, p=G.rescuer;
+  const d=dist(p.x,p.y,v.x,v.y);
+  const radioViva = !v.radioDead && v.battery>0;
+  G.signal = radioViva ? clamp(1-d/SIGNAL_RANGE,0,1) : 0;
+  if(radioViva && G.signal>0.05) v.lastKnown={x:v.x,y:v.y};
+  // tarjetas del panel afectado
+  $('vHr').textContent=Math.round(v.hr);
+  $('vSpo2').textContent=v.alive ? v.spo2.toFixed(0) : '0';
+  $('vTemp').textContent=v.temp.toFixed(1);
+  $('vImu').innerHTML=v.imu.toFixed(2)+'<small style="font-size:10px">g</small>';
+  $('vBatt').textContent=v.battery.toFixed(0)+'% · MPU6050';
+  const [tL,tC]=tempStatus(v.temp); $('vTempS').textContent=tL; $('vTempS').className='sub '+tC;
+  const [hL,hC]=v.alive?hrStatus(v.hr):['PARO','bad']; $('vHrS').textContent=hL; $('vHrS').className='sub '+hC;
+  const [sL,sC]=v.alive?spo2Status(v.spo2):['ANOXIA','bad']; $('vSpo2S').textContent=sL; $('vSpo2S').className='sub '+sC;
+  $('vLinkS').textContent = radioViva ? `SX1278 LoRa · ${(G.signal*100).toFixed(0)}%` : 'SX1278 APAGADA';
+  $('vLinkS').className='sub '+(radioViva?'info':'bad');
+  // barra de integridad vital + conciencia
+  const hf=$('healthFill');
+  hf.style.width=v.health.toFixed(0)+'%';
+  hf.className = v.health>55 ? 'g' : v.health>25 ? 'a' : 'r';
+  $('healthLbl').textContent=v.health.toFixed(0)+'%';
+  const chip=$('consciousChip');
+  chip.textContent=v.conscious;
+  chip.style.color = v.conscious==='CONSCIENTE' ? 'var(--teal)'
+                   : v.conscious==='SOMNOLIENTE' ? 'var(--amber)' : 'var(--red)';
+  const cm=$('critMsg');
+  if(!v.alive){ cm.textContent='✝ '+v.deathCause+' — la víctima entró en paro cardíaco'; cm.className='crit-row bad'; }
+  else if(v.health<25){ cm.textContent='⚠ ESTADO CRÍTICO — paro cardíaco inminente, corre al punto caliente'; cm.className='crit-row bad'; }
+  else if(v.health<60){ cm.textContent='⚠ Integridad vital comprometida: estabiliza la temperatura y la SpO₂'; cm.className='crit-row warn'; }
+  else { cm.textContent=`Estable · el ambiente de los escombros (${AMBIENT_TEMP} °C) drena calor · el pad frena la hipotermia pero gasta batería`; cm.className='crit-row'; }
+  $('deadBanner').style.display = v.alive ? 'none' : 'block';
+  // tracker del rescatista: barras, % y flecha
+  const lvl=Math.ceil(G.signal*5);
+  document.querySelectorAll('#sigBars i').forEach((el,i)=>el.classList.toggle('on',i<lvl));
+  $('sigPct').textContent=(G.signal*100).toFixed(0)+'%';
+  const ang=Math.atan2(v.y-p.y,v.x-p.x)*180/Math.PI;
+  const jitter=(1-G.signal)*35;
+  $('dirArrow').style.transform=`rotate(${ang+90+rnd(-jitter,jitter)}deg)`;
+  $('dirTxt').textContent = G.signal<=0.02 ? (radioViva?'SIN SEÑAL':'RADIO APAGADA')
+    : G.signal<0.2?'❄ muy lejos' : G.signal<0.45?'frío' : G.signal<0.75?'caliente' : '🔥 ¡muy cerca!';
+  // enlace y pérdida de paquetes
+  const link=$('linkState');
+  if(!radioViva){ link.textContent='● RADIO MUERTA'; link.style.color='var(--red)'; }
+  else if(!v.alive){ link.textContent='● LÍNEA PLANA'; link.style.color='var(--red)'; }
+  else if(!G.packetOk){ link.textContent='○ PAQUETE PERDIDO'; link.style.color='var(--amber)'; }
+  else { link.textContent='● EN VIVO'; link.style.color='var(--green)'; }
+  // valores que llegan por LoRa (congelados si se pierde el paquete)
+  if(G.packetOk && radioViva){
+    $('tHr').textContent=Math.round(v.hr); $('tHr').className='v '+hC;
+    $('tSpo2').textContent=v.alive?v.spo2.toFixed(0):'0'; $('tSpo2').className='v '+sC;
+    $('tTemp').textContent=v.temp.toFixed(1); $('tTemp').className='v '+tC;
+    $('tImu').textContent=v.imu.toFixed(2)+'g';
+  }
+  // timer
+  $('timer').textContent=fmtTime(G.elapsed);
+}
+
+/* Pitidos de proximidad: cuanto más cerca, más rápido y agudo */
+function proximityBeep(now){
+  if(!G.running||G.muted||G.signal<=0.03||!G.victim.alive) return;
+  const interval = 2100 - G.signal*1900;          // 2.1s lejos → 0.2s cerca
+  if(now-G.lastBeep>interval){ G.lastBeep=now; beep(520+G.signal*460, .08, 'square', .045); }
+}
+
+/* Paquetes LoRa: 1 Hz con pérdida proporcional a la distancia */
+setInterval(()=>{
+  if(!G.running) return;
+  const loss=(1-G.signal)*0.7;   // modo difícil: más pérdida de paquetes
+  G.packetOk=Math.random()>loss;
+  if(!G.packetOk) log('victimLog',`<span class="t">[LoRa]</span> paquete perdido (señal débil ${(G.signal*100).toFixed(0)}%)`);
+},1000);
+
+/* ============================================================
+   Bucle principal
+   ============================================================ */
+let last=performance.now();
+function loop(now){
+  const dt=Math.min(0.05,(now-last)/1000); last=now;
+  if(G.running){
+    G.elapsed=(now-G.t0)/1000;
+    vitalsTick(dt);              // puede llamar a die() y poner G.running=false
+    updatePlayer(dt);
+    proximityBeep(now);
+    // condición de rescate (el montón de escombros es sólido: basta con llegar junto a él)
+    if(G.running && G.victim.alive &&
+       dist(G.rescuer.x,G.rescuer.y,G.victim.x,G.victim.y)<120) winGame();
+  }
+  // cada dibujo va aislado: un fallo en un lienzo no congela los demás
+  try{ drawVictimScene(); }catch(err){ console.error(err); }
+  try{ drawRescueWorld(); }catch(err){ console.error(err); }
+  try{ drawRadar(); }catch(err){ console.error(err); }
+  updateHUD();
+  requestAnimationFrame(loop);
+}
+
+/* ============================================================
+   Flujo de partida
+   ============================================================ */
+function resetGame(){
+  G.victim={ x:0,y:0,temp:36.3,tempTarget:36.6,hr:75,spo2:97,imu:0.08,
+    battery:100,padOn:false,sosCount:0,lastSos:-999,alive:true,
+    radioDead:false,health:100,conscious:'CONSCIENTE',arrestGrace:0,
+    lastWarn:-99,deathCause:'',lastKnown:null };
+  G.rescuer={x:90,y:90,vx:0,vy:0,angle:0};
+  G.signal=0; G.packetOk=true; G.morse={buf:[],downAt:0,lastUp:0,triple:[]};
+  generateWorld();
+  $('tempSlider').value=36.6; $('tempLbl').textContent='36.6°';
+  $('padBtn').classList.remove('active');
+  $('padBtn').querySelector('span').textContent='apagado · calienta nuca';
+  $('sosBanner').style.display='none';
+  $('deadBanner').style.display='none';
+  $('loseOverlay').classList.add('hide');
+  $('healthFill').style.width='100%'; $('healthFill').className='g';
+  $('healthLbl').textContent='100%';
+  $('consciousChip').textContent='CONSCIENTE';
+  $('victimLog').innerHTML='';
+  log('victimLog',`<b>[WTS]</b> sistema iniciado · sensores OK · radio LoRa activa · modo difícil`);
+  log('victimLog',`<span class="t">[AMBIENTE]</span> temperatura en escombros ${AMBIENT_TEMP} °C · la víctima pierde calor sin el pad térmico`);
+}
+function startGame(){
+  audioInit(); if(G.audio.state==='suspended') G.audio.resume();
+  if(!G.started){ resetGame(); G.started=true; }
+  G.running=true; G.t0=performance.now()-G.elapsed*1000;
+  $('startOverlay').classList.add('hide');
+}
+function winGame(){
+  G.running=false;
+  const v=G.victim;
+  $('winTime').textContent=fmtTime(G.elapsed);
+  $('winSos').textContent=v.sosCount;
+  $('winTemp').textContent=v.temp.toFixed(1)+'°';
+  const [st,c]=tempStatus(v.temp);
+  $('winCond').innerHTML=`La víctima fue localizada <b>con vida</b> (${v.conscious.toLowerCase()}) con FC ${Math.round(v.hr)} bpm,
+    SpO₂ ${v.spo2.toFixed(0)}% y temperatura ${v.temp.toFixed(1)}°C
+    (<b style="color:var(--${c==='ok'?'green':c==='warn'?'amber':'red'})">${st}</b>).
+    Integridad vital al rescate: ${v.health.toFixed(0)}% · batería restante: ${v.battery.toFixed(0)}%.`;
+  $('winOverlay').classList.remove('hide');
+}
+
+/* ---------- Controles UI ---------- */
+$('tempSlider').addEventListener('input',e=>{
+  G.victim.tempTarget=parseFloat(e.target.value);
+  $('tempLbl').textContent=parseFloat(e.target.value).toFixed(1)+'°';
+  log('victimLog',`<b>[TÉRMICO]</b> temperatura objetivo → ${e.target.value}°C`);
+});
+$('padBtn').addEventListener('click',()=>{
+  G.victim.padOn=!G.victim.padOn;
+  $('padBtn').classList.toggle('active',G.victim.padOn);
+  $('padBtn').querySelector('span').textContent=G.victim.padOn?'ENCENDIDO · calentando nuca':'apagado · calienta nuca';
+  log('victimLog',G.victim.padOn?'<span class="r">[PAD TÉRMICO]</span> encendido':'<span class="t">[PAD TÉRMICO]</span> apagado');
+});
+$('struggleBtn').addEventListener('pointerdown',()=>{
+  if(!G.victim.alive) return;
+  G.victim.imu=Math.min(2.4,G.victim.imu+1.1);
+  G.victim.battery=Math.max(0,G.victim.battery-0.4);
+  log('victimLog',`<b>[IMU MPU-6050]</b> forcejeo detectado · pico de aceleración`);
+});
+$('muteBtn').addEventListener('click',()=>{
+  G.muted=!G.muted; $('muteBtn').textContent=G.muted?'🔇 Silencio':'🔊 Sonido';
+});
+$('restartBtn').addEventListener('click',()=>{
+  G.elapsed=0; G.started=false; resetGame();
+  $('winOverlay').classList.add('hide'); $('loseOverlay').classList.add('hide');
+  $('startOverlay').classList.remove('hide');
+});
+$('helpBtn').addEventListener('click',()=>{ G.running=false; $('startOverlay').classList.remove('hide'); });
+$('startBtn').addEventListener('click',startGame);
+$('againBtn').addEventListener('click',()=>{
+  G.elapsed=0; G.started=false; resetGame();
+  $('winOverlay').classList.add('hide'); startGame();
+});
+$('retryBtn').addEventListener('click',()=>{
+  G.elapsed=0; G.started=false; resetGame();
+  $('loseOverlay').classList.add('hide'); startGame();
+});
+$('sosInfoBtn').addEventListener('click',()=>{
+  log('victimLog',`<span class="t">[AYUDA]</span> toca el módulo WTS del cuello: 3 toques rápidos = SOS, o mantén pulsado para rayas Morse (···———···)`);
+});
+
+// arranque
+resetGame();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
