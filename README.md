@@ -34,8 +34,16 @@ python3 -m http.server 8000
 
 ### Panel derecho — el rescatista (personaje jugable)
 
-- Movimiento con **WASD**, **flechas** o **joystick táctil** (móvil), con
-  colisiones contra los escombros.
+- Movimiento con **WASD**, **flechas**, **mando físico** o **joystick táctil**,
+  con colisiones contra los escombros.
+- **Mandos soportados (Gamepad API):** Meta Quest Touch (en el navegador del
+  Quest, mueve con el *stick izquierdo*), Xbox, PlayStation y joysticks
+  genéricos, incluidos sus sticks y cruceta digital. El stick es analógico: a
+  menor inclinación, más lento el desplazamiento.
+- Si el dispositivo no expone mando, el botón **🕹️ Joystick en pantalla** del
+  encabezado muestra un joystick virtual arrastrable (también funciona con el
+  puntero de rayo de los controles Touch). Un indicador junto al lienzo muestra
+  el mando detectado.
 - El **rastreador LoRa SX1278** muestra barras de señal, porcentaje, flecha de
   dirección y un radar con el blip de la víctima: cuanto más cerca, más grande
   el blip, más rápido el pitido y más altas las barras (❄ muy lejos → 🔥 muy cerca).

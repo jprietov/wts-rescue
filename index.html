@@ -102,8 +102,12 @@
   /* joystick */
   #joy{position:absolute;right:22px;bottom:26px;width:110px;height:110px;border-radius:50%;
     background:#ffffff10;border:2px solid #ffffff22;touch-action:none;display:none}
+  body.joy-force #joy{display:block}
   #joy .knob{position:absolute;left:50%;top:50%;width:46px;height:46px;margin:-23px 0 0 -23px;
     border-radius:50%;background:#ff9d2ecc;box-shadow:0 0 16px #ff9d2e66}
+  .padbadge{display:inline-flex;align-items:center;gap:6px;font-size:10.5px;color:var(--dim);
+    background:#0a1118;border:1px solid var(--line);border-radius:20px;padding:3px 10px;margin-left:8px}
+  .padbadge.on{color:var(--teal);border-color:#2fd6c355}
   .pane.right{position:relative}
   .hint{font-size:10.5px;color:var(--dim);text-align:center;padding:2px 0 0}
   .hint kbd{background:#1b2836;border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;
@@ -234,7 +238,8 @@
     <div class="pane-title"><span class="dot r"></span> Vista del rescatista · personaje jugable (rastreador LoRa en mano)</div>
     <div class="pane-body">
       <canvas id="rescueCanvas" width="960" height="560"></canvas>
-      <div class="hint">Mover: <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> o <kbd>←↑↓→</kbd> · en móvil usa el joystick · acércate a la víctima para rescatarla</div>
+      <div class="hint">Mover: <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> o <kbd>←↑↓→</kbd> · 🕹️ stick de mando (Quest Touch: stick izquierdo) · joystick táctil abajo a la derecha
+        <span class="padbadge" id="padStatus">🕹️ sin mando</span></div>
 
       <div class="tracker">
         <div class="tr-head">
@@ -286,7 +291,7 @@
       <div class="col">
         <h4>🟧 Panel del rescatista · MODO DIFÍCIL</h4>
         <ul>
-          <li>Muévete con WASD / flechas / joystick entre más escombros; eres más lento</li>
+          <li>Muévete con WASD / flechas, el <b>stick de un mando</b> (Meta Quest Touch, Xbox, PlayStation) o el joystick en pantalla (botón 🕹️ del encabezado)</li>
           <li>Rastreador <b>“calor o frío”</b> con menor alcance y más pérdida de paquetes</li>
           <li>FC, SpO₂, temperatura, conciencia y alertas SOS por LoRa</li>
           <li>Corre contra el tiempo: si la víctima entra en paro, <b>pierdes la misión</b></li>
@@ -371,8 +376,40 @@ const G = {
   morse:{ buf:[], downAt:0, lastUp:0, triple:[] },
   obstacles:[], rubble:[], dust:[],
   keys:{}, joy:{active:false,x:0,y:0},
+  gamepad:{connected:false,name:''},
   audio:null
 };
+const STICK_DEADZONE = 0.18;       // zona muerta del stick (evita deriva de Quest Touch)
+
+/* ---------- Gamepad API: Quest Touch, Xbox, PlayStation, joysticks genéricos ---------- */
+function readGamepad(){
+  if(typeof navigator==='undefined' || !navigator.getGamepads) return null;
+  let pads;
+  try{ pads=navigator.getGamepads(); }catch(e){ return null; }
+  for(const pad of pads){
+    if(!pad || !pad.axes) continue;
+    let ax=pad.axes[0]||0, ay=pad.axes[1]||0;
+    // si el stick izquierdo está en reposo, prueba el derecho (axes 2/3)
+    if(pad.axes.length>=4 && Math.hypot(ax,ay)<=STICK_DEADZONE){ ax=pad.axes[2]||0; ay=pad.axes[3]||0; }
+    // cruceta digital del mapeo estándar: 12↑ 13↓ 14← 15→
+    if(pad.buttons && pad.buttons.length>=16){
+      if(pad.buttons[12] && pad.buttons[12].pressed) ay-=1;
+      if(pad.buttons[13] && pad.buttons[13].pressed) ay+=1;
+      if(pad.buttons[14] && pad.buttons[14].pressed) ax-=1;
+      if(pad.buttons[15] && pad.buttons[15].pressed) ax+=1;
+    }
+    const m=Math.hypot(ax,ay);
+    if(m>STICK_DEADZONE){
+      return { x:ax, y:ay, mag:Math.min(1,m), id:pad.id||'Mando genérico' };
+    }
+  }
+  return null;
+}
+addEventListener('gamepadconnected', e=>{
+  G.gamepad.connected=true; G.gamepad.name=e.gamepad.id||'Mando';
+  log('victimLog',`<span class="t">[MANDO]</span> conectado: <b>${G.gamepad.name}</b> · usa el stick izquierdo para mover al rescatista`);
+});
+addEventListener('gamepaddisconnected', ()=>{ G.gamepad.connected=false; G.gamepad.name=''; });
 
 /* ---------- Utilidades ---------- */
 const $ = id => document.getElementById(id);
@@ -789,17 +826,39 @@ function joyMove(e){
 
 function updatePlayer(dt){
   const p=G.rescuer, sp=205;   // modo difícil: desplazamiento más lento
+  // 1) teclado (WASD / flechas)
   let ax=0, ay=0;
   if(keys['w']||keys['arrowup']) ay-=1;
   if(keys['s']||keys['arrowdown']) ay+=1;
   if(keys['a']||keys['arrowleft']) ax-=1;
   if(keys['d']||keys['arrowright']) ax+=1;
-  if(G.joy.active){ ax=G.joy.x; ay=G.joy.y; }
+  // 2) joystick táctil en pantalla
+  if(G.joy.active && Math.hypot(G.joy.x,G.joy.y)>STICK_DEADZONE){ ax=G.joy.x; ay=G.joy.y; }
+  // 3) mando físico (Quest Touch / Xbox / PlayStation): gana si su empuje es mayor
+  const gp=readGamepad();
+  if(gp && gp.mag>=Math.hypot(ax,ay)){ ax=gp.x; ay=gp.y; }
   const m=Math.hypot(ax,ay);
-  if(m>0){ ax/=m||1; ay/=m||1; p.angle=Math.atan2(ay,ax); }
-  const nx=p.x+ax*sp*dt, ny=p.y+ay*sp*dt;
-  if(!collides(nx,p.y,16)) p.x=nx;
-  if(!collides(p.x,ny,16)) p.y=ny;
+  if(m>0){
+    const mag=Math.min(1,m);          // el stick permite moverse más despacio (control analógico)
+    ax/=m; ay/=m; p.angle=Math.atan2(ay,ax);
+    const nx=p.x+ax*sp*mag*dt, ny=p.y+ay*sp*mag*dt;
+    if(!collides(nx,p.y,16)) p.x=nx;
+    if(!collides(p.x,ny,16)) p.y=ny;
+  }
+}
+/* Indicador de mando en la interfaz (también detecta conexiones sin evento) */
+function refreshGamepadUI(){
+  const gp=readGamepad();
+  const anyPad = G.gamepad.connected || !!gp;
+  if(anyPad && !G.gamepad.connected){ G.gamepad.connected=true; G.gamepad.name=gp?gp.id:'Mando'; }
+  const el=$('padStatus');
+  if(!el) return;
+  if(anyPad){
+    const short=(G.gamepad.name||'Mando').replace(/ \(.*?\)/g,'').slice(0,34);
+    el.textContent='🕹️ '+short+' · stick activo'; el.classList.add('on');
+  } else {
+    el.textContent='🕹️ sin mando'; el.classList.remove('on');
+  }
 }
 
 function drawRescueWorld(){
@@ -1035,6 +1094,7 @@ function loop(now){
   try{ drawRescueWorld(); }catch(err){ console.error(err); }
   try{ drawRadar(); }catch(err){ console.error(err); }
   updateHUD();
+  refreshGamepadUI();
   requestAnimationFrame(loop);
 }
 
@@ -1102,6 +1162,10 @@ $('struggleBtn').addEventListener('pointerdown',()=>{
 });
 $('muteBtn').addEventListener('click',()=>{
   G.muted=!G.muted; $('muteBtn').textContent=G.muted?'🔇 Silencio':'🔊 Sonido';
+});
+$('joyBtn').addEventListener('click',()=>{
+  const on=document.body.classList.toggle('joy-force');
+  $('joyBtn').textContent = on ? '🕹️ Ocultar joystick' : '🕹️ Joystick en pantalla';
 });
 $('restartBtn').addEventListener('click',()=>{
   G.elapsed=0; G.started=false; resetGame();
