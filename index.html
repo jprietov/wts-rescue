@@ -167,6 +167,7 @@
   <div class="spacer"></div>
   <div class="timer" id="timer">00:00</div>
   <button class="hbtn" id="muteBtn">🔊 Sonido</button>
+  <button class="hbtn" id="joyBtn">🕹️ Joystick en pantalla</button>
   <button class="hbtn" id="helpBtn">❔ Ayuda</button>
   <button class="hbtn" id="restartBtn">↻ Reiniciar</button>
 </header>
@@ -1163,9 +1164,10 @@ $('struggleBtn').addEventListener('pointerdown',()=>{
 $('muteBtn').addEventListener('click',()=>{
   G.muted=!G.muted; $('muteBtn').textContent=G.muted?'🔇 Silencio':'🔊 Sonido';
 });
-$('joyBtn').addEventListener('click',()=>{
+const joyBtnEl=$('joyBtn');
+if(joyBtnEl) joyBtnEl.addEventListener('click',()=>{
   const on=document.body.classList.toggle('joy-force');
-  $('joyBtn').textContent = on ? '🕹️ Ocultar joystick' : '🕹️ Joystick en pantalla';
+  joyBtnEl.textContent = on ? '🕹️ Ocultar joystick' : '🕹️ Joystick en pantalla';
 });
 $('restartBtn').addEventListener('click',()=>{
   G.elapsed=0; G.started=false; resetGame();
